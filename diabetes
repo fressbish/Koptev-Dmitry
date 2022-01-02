@@ -1,0 +1,1190 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Практическая часть: прогнозирование заболевания сахарным диабетом"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Для python есть множество различных библиотек, которые расширяют возможности языка. Для практической части необходимы библиотеки numpy, pandas и matplotlib (модуль pyplot). Импортируем эти библиотеки:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Using matplotlib backend: Qt5Agg\n"
+     ]
+    }
+   ],
+   "source": [
+    "import numpy as np\n",
+    "import pandas as pd\n",
+    "import matplotlib.pyplot as plt\n",
+    "\n",
+    "from sklearn.model_selection import train_test_split\n",
+    "from sklearn.ensemble import RandomForestClassifier\n",
+    "from sklearn.model_selection import cross_val_score\n",
+    "from sklearn.linear_model import LogisticRegression\n",
+    "\n",
+    "%matplotlib"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Анализ данных по заболеванию"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Импортируем данные по заболеваниям сахарным диабетом для 2000 пациентов. Данные взяты с сайта https://www.kaggle.com/vikasukani/diabetes-data-set/version/1"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "diabetes = pd.read_csv('diabetes-dataset.csv')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "(2000, 9)"
+      ]
+     },
+     "execution_count": 3,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "diabetes.shape"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Данные содержат записи о 2000 пациетов, для каждого пациента оцениваются 9 параметров организма (симптомов), влияющих на наличие/отсутствие сахарного диабета. В качестве симптомов описываются: \n",
+    "<ol>\n",
+    "<li>счетчик состояний беременности,</li> \n",
+    "<li>уровень глюкозы в крови, </li>\n",
+    "<li>кровяное давление, </li>\n",
+    "<li>толщина кожи, </li>\n",
+    "<li>инсулин, </li>\n",
+    "<li>данные о сахарном диабете в анамнезе у родственников, </li>\n",
+    "<li>возраст.</li>\n",
+    "</ol>\n",
+    "Колонка Outcome означает наличие (1) или отсутствие (0) сахарного диабета у пациента."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Ниже приведены пояснения к элементам матрицы симптомов (их среднее значение, среднеквадратичное отклонение от среднего значения и т.д.):"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {
+    "scrolled": false
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Pregnancies</th>\n",
+       "      <th>Glucose</th>\n",
+       "      <th>BloodPressure</th>\n",
+       "      <th>SkinThickness</th>\n",
+       "      <th>Insulin</th>\n",
+       "      <th>BMI</th>\n",
+       "      <th>DiabetesPedigreeFunction</th>\n",
+       "      <th>Age</th>\n",
+       "      <th>Outcome</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>count</th>\n",
+       "      <td>2000.000000</td>\n",
+       "      <td>2000.000000</td>\n",
+       "      <td>2000.000000</td>\n",
+       "      <td>2000.000000</td>\n",
+       "      <td>2000.000000</td>\n",
+       "      <td>2000.000000</td>\n",
+       "      <td>2000.000000</td>\n",
+       "      <td>2000.000000</td>\n",
+       "      <td>2000.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>mean</th>\n",
+       "      <td>3.703500</td>\n",
+       "      <td>121.182500</td>\n",
+       "      <td>69.145500</td>\n",
+       "      <td>20.935000</td>\n",
+       "      <td>80.254000</td>\n",
+       "      <td>32.193000</td>\n",
+       "      <td>0.470930</td>\n",
+       "      <td>33.090500</td>\n",
+       "      <td>0.342000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>std</th>\n",
+       "      <td>3.306063</td>\n",
+       "      <td>32.068636</td>\n",
+       "      <td>19.188315</td>\n",
+       "      <td>16.103243</td>\n",
+       "      <td>111.180534</td>\n",
+       "      <td>8.149901</td>\n",
+       "      <td>0.323553</td>\n",
+       "      <td>11.786423</td>\n",
+       "      <td>0.474498</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>min</th>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>0.078000</td>\n",
+       "      <td>21.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>25%</th>\n",
+       "      <td>1.000000</td>\n",
+       "      <td>99.000000</td>\n",
+       "      <td>63.500000</td>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>27.375000</td>\n",
+       "      <td>0.244000</td>\n",
+       "      <td>24.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>50%</th>\n",
+       "      <td>3.000000</td>\n",
+       "      <td>117.000000</td>\n",
+       "      <td>72.000000</td>\n",
+       "      <td>23.000000</td>\n",
+       "      <td>40.000000</td>\n",
+       "      <td>32.300000</td>\n",
+       "      <td>0.376000</td>\n",
+       "      <td>29.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>75%</th>\n",
+       "      <td>6.000000</td>\n",
+       "      <td>141.000000</td>\n",
+       "      <td>80.000000</td>\n",
+       "      <td>32.000000</td>\n",
+       "      <td>130.000000</td>\n",
+       "      <td>36.800000</td>\n",
+       "      <td>0.624000</td>\n",
+       "      <td>40.000000</td>\n",
+       "      <td>1.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>max</th>\n",
+       "      <td>17.000000</td>\n",
+       "      <td>199.000000</td>\n",
+       "      <td>122.000000</td>\n",
+       "      <td>110.000000</td>\n",
+       "      <td>744.000000</td>\n",
+       "      <td>80.600000</td>\n",
+       "      <td>2.420000</td>\n",
+       "      <td>81.000000</td>\n",
+       "      <td>1.000000</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "       Pregnancies      Glucose  BloodPressure  SkinThickness      Insulin  \\\n",
+       "count  2000.000000  2000.000000    2000.000000    2000.000000  2000.000000   \n",
+       "mean      3.703500   121.182500      69.145500      20.935000    80.254000   \n",
+       "std       3.306063    32.068636      19.188315      16.103243   111.180534   \n",
+       "min       0.000000     0.000000       0.000000       0.000000     0.000000   \n",
+       "25%       1.000000    99.000000      63.500000       0.000000     0.000000   \n",
+       "50%       3.000000   117.000000      72.000000      23.000000    40.000000   \n",
+       "75%       6.000000   141.000000      80.000000      32.000000   130.000000   \n",
+       "max      17.000000   199.000000     122.000000     110.000000   744.000000   \n",
+       "\n",
+       "               BMI  DiabetesPedigreeFunction          Age      Outcome  \n",
+       "count  2000.000000               2000.000000  2000.000000  2000.000000  \n",
+       "mean     32.193000                  0.470930    33.090500     0.342000  \n",
+       "std       8.149901                  0.323553    11.786423     0.474498  \n",
+       "min       0.000000                  0.078000    21.000000     0.000000  \n",
+       "25%      27.375000                  0.244000    24.000000     0.000000  \n",
+       "50%      32.300000                  0.376000    29.000000     0.000000  \n",
+       "75%      36.800000                  0.624000    40.000000     1.000000  \n",
+       "max      80.600000                  2.420000    81.000000     1.000000  "
+      ]
+     },
+     "execution_count": 4,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "diabetes.describe()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {
+    "scrolled": false
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Pregnancies</th>\n",
+       "      <th>Glucose</th>\n",
+       "      <th>BloodPressure</th>\n",
+       "      <th>SkinThickness</th>\n",
+       "      <th>Insulin</th>\n",
+       "      <th>BMI</th>\n",
+       "      <th>DiabetesPedigreeFunction</th>\n",
+       "      <th>Age</th>\n",
+       "      <th>Outcome</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>2</td>\n",
+       "      <td>138</td>\n",
+       "      <td>62</td>\n",
+       "      <td>35</td>\n",
+       "      <td>0</td>\n",
+       "      <td>33.6</td>\n",
+       "      <td>0.127</td>\n",
+       "      <td>47</td>\n",
+       "      <td>1</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>0</td>\n",
+       "      <td>84</td>\n",
+       "      <td>82</td>\n",
+       "      <td>31</td>\n",
+       "      <td>125</td>\n",
+       "      <td>38.2</td>\n",
+       "      <td>0.233</td>\n",
+       "      <td>23</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>0</td>\n",
+       "      <td>145</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>44.2</td>\n",
+       "      <td>0.630</td>\n",
+       "      <td>31</td>\n",
+       "      <td>1</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>0</td>\n",
+       "      <td>135</td>\n",
+       "      <td>68</td>\n",
+       "      <td>42</td>\n",
+       "      <td>250</td>\n",
+       "      <td>42.3</td>\n",
+       "      <td>0.365</td>\n",
+       "      <td>24</td>\n",
+       "      <td>1</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>1</td>\n",
+       "      <td>139</td>\n",
+       "      <td>62</td>\n",
+       "      <td>41</td>\n",
+       "      <td>480</td>\n",
+       "      <td>40.7</td>\n",
+       "      <td>0.536</td>\n",
+       "      <td>21</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "   Pregnancies  Glucose  BloodPressure  SkinThickness  Insulin   BMI  \\\n",
+       "0            2      138             62             35        0  33.6   \n",
+       "1            0       84             82             31      125  38.2   \n",
+       "2            0      145              0              0        0  44.2   \n",
+       "3            0      135             68             42      250  42.3   \n",
+       "4            1      139             62             41      480  40.7   \n",
+       "\n",
+       "   DiabetesPedigreeFunction  Age  Outcome  \n",
+       "0                     0.127   47        1  \n",
+       "1                     0.233   23        0  \n",
+       "2                     0.630   31        1  \n",
+       "3                     0.365   24        1  \n",
+       "4                     0.536   21        0  "
+      ]
+     },
+     "execution_count": 5,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "diabetes.head(5)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Разделение признаков на исходные и целевой:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Исходные признаки:\n",
+    "X = diabetes[diabetes.columns.drop('Outcome')]\n",
+    "\n",
+    "# Целевой признак:\n",
+    "y = diabetes['Outcome']"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "Pregnancies                   2.000\n",
+       "Glucose                     138.000\n",
+       "BloodPressure                62.000\n",
+       "SkinThickness                35.000\n",
+       "Insulin                       0.000\n",
+       "BMI                          33.600\n",
+       "DiabetesPedigreeFunction      0.127\n",
+       "Age                          47.000\n",
+       "Name: 0, dtype: float64"
+      ]
+     },
+     "execution_count": 7,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# Исходные признаки для первого пациента:\n",
+    "\n",
+    "X.loc[0,:]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "1"
+      ]
+     },
+     "execution_count": 8,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# Целевой признак для первого пациента:\n",
+    "\n",
+    "y.loc[0]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Распределения признаков:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [],
+   "source": [
+    "fig = plt.figure(figsize=(10,25))\n",
+    "for idx, col in enumerate(diabetes.columns.drop('Outcome')):\n",
+    "    ax = fig.add_subplot(5, 2, idx+1)\n",
+    "    ax.hist(diabetes[col])\n",
+    "    ax.set(title = col)\n",
+    "    plt.subplots_adjust(wspace=0.3, hspace=0.5)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Также, чтобы понимать какие признаки сильнее влияют на постановку диагноза, расммотрим степени корреляции каждого симптома с целевым признаком (наличие/отсутствие сахарного диабета):"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Pregnancies - 0.22443699263363923\n",
+      "Glucose - 0.45842130242346285\n",
+      "BloodPressure - 0.07595808358896639\n",
+      "SkinThickness - 0.07604024696581342\n",
+      "Insulin - 0.12092362183050175\n",
+      "BMI - 0.2767255387700314\n",
+      "DiabetesPedigreeFunction - 0.15545907915694\n",
+      "Age - 0.23650924717620203\n"
+     ]
+    }
+   ],
+   "source": [
+    "for col in X:\n",
+    "    print(col, '-', diabetes[col].corr(diabetes['Outcome']))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Pregnancies</th>\n",
+       "      <th>Glucose</th>\n",
+       "      <th>BloodPressure</th>\n",
+       "      <th>SkinThickness</th>\n",
+       "      <th>Insulin</th>\n",
+       "      <th>BMI</th>\n",
+       "      <th>DiabetesPedigreeFunction</th>\n",
+       "      <th>Age</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>Pregnancies</th>\n",
+       "      <td>1.000000</td>\n",
+       "      <td>0.120405</td>\n",
+       "      <td>0.149672</td>\n",
+       "      <td>-0.063375</td>\n",
+       "      <td>-0.076600</td>\n",
+       "      <td>0.019475</td>\n",
+       "      <td>-0.025453</td>\n",
+       "      <td>0.539457</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>Glucose</th>\n",
+       "      <td>0.120405</td>\n",
+       "      <td>1.000000</td>\n",
+       "      <td>0.138044</td>\n",
+       "      <td>0.062368</td>\n",
+       "      <td>0.320371</td>\n",
+       "      <td>0.226864</td>\n",
+       "      <td>0.123243</td>\n",
+       "      <td>0.254496</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>BloodPressure</th>\n",
+       "      <td>0.149672</td>\n",
+       "      <td>0.138044</td>\n",
+       "      <td>1.000000</td>\n",
+       "      <td>0.198800</td>\n",
+       "      <td>0.087384</td>\n",
+       "      <td>0.281545</td>\n",
+       "      <td>0.051331</td>\n",
+       "      <td>0.238375</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>SkinThickness</th>\n",
+       "      <td>-0.063375</td>\n",
+       "      <td>0.062368</td>\n",
+       "      <td>0.198800</td>\n",
+       "      <td>1.000000</td>\n",
+       "      <td>0.448859</td>\n",
+       "      <td>0.393760</td>\n",
+       "      <td>0.178299</td>\n",
+       "      <td>-0.111034</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>Insulin</th>\n",
+       "      <td>-0.076600</td>\n",
+       "      <td>0.320371</td>\n",
+       "      <td>0.087384</td>\n",
+       "      <td>0.448859</td>\n",
+       "      <td>1.000000</td>\n",
+       "      <td>0.223012</td>\n",
+       "      <td>0.192719</td>\n",
+       "      <td>-0.085879</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>BMI</th>\n",
+       "      <td>0.019475</td>\n",
+       "      <td>0.226864</td>\n",
+       "      <td>0.281545</td>\n",
+       "      <td>0.393760</td>\n",
+       "      <td>0.223012</td>\n",
+       "      <td>1.000000</td>\n",
+       "      <td>0.125719</td>\n",
+       "      <td>0.038987</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>DiabetesPedigreeFunction</th>\n",
+       "      <td>-0.025453</td>\n",
+       "      <td>0.123243</td>\n",
+       "      <td>0.051331</td>\n",
+       "      <td>0.178299</td>\n",
+       "      <td>0.192719</td>\n",
+       "      <td>0.125719</td>\n",
+       "      <td>1.000000</td>\n",
+       "      <td>0.026569</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>Age</th>\n",
+       "      <td>0.539457</td>\n",
+       "      <td>0.254496</td>\n",
+       "      <td>0.238375</td>\n",
+       "      <td>-0.111034</td>\n",
+       "      <td>-0.085879</td>\n",
+       "      <td>0.038987</td>\n",
+       "      <td>0.026569</td>\n",
+       "      <td>1.000000</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                          Pregnancies   Glucose  BloodPressure  SkinThickness  \\\n",
+       "Pregnancies                  1.000000  0.120405       0.149672      -0.063375   \n",
+       "Glucose                      0.120405  1.000000       0.138044       0.062368   \n",
+       "BloodPressure                0.149672  0.138044       1.000000       0.198800   \n",
+       "SkinThickness               -0.063375  0.062368       0.198800       1.000000   \n",
+       "Insulin                     -0.076600  0.320371       0.087384       0.448859   \n",
+       "BMI                          0.019475  0.226864       0.281545       0.393760   \n",
+       "DiabetesPedigreeFunction    -0.025453  0.123243       0.051331       0.178299   \n",
+       "Age                          0.539457  0.254496       0.238375      -0.111034   \n",
+       "\n",
+       "                           Insulin       BMI  DiabetesPedigreeFunction  \\\n",
+       "Pregnancies              -0.076600  0.019475                 -0.025453   \n",
+       "Glucose                   0.320371  0.226864                  0.123243   \n",
+       "BloodPressure             0.087384  0.281545                  0.051331   \n",
+       "SkinThickness             0.448859  0.393760                  0.178299   \n",
+       "Insulin                   1.000000  0.223012                  0.192719   \n",
+       "BMI                       0.223012  1.000000                  0.125719   \n",
+       "DiabetesPedigreeFunction  0.192719  0.125719                  1.000000   \n",
+       "Age                      -0.085879  0.038987                  0.026569   \n",
+       "\n",
+       "                               Age  \n",
+       "Pregnancies               0.539457  \n",
+       "Glucose                   0.254496  \n",
+       "BloodPressure             0.238375  \n",
+       "SkinThickness            -0.111034  \n",
+       "Insulin                  -0.085879  \n",
+       "BMI                       0.038987  \n",
+       "DiabetesPedigreeFunction  0.026569  \n",
+       "Age                       1.000000  "
+      ]
+     },
+     "execution_count": 11,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "corr = X.corr()\n",
+    "corr"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Построение модели прогнозирования заболевания"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Для построения прогнозов (y) по исходным данных (X) будем использовать модель логистической регрессии LogisticRegresion из библиотеки scikit-learn. Для оценки качества работы модели мы роазделим исходные и целевые данные на обучающие и тестовые. Обучать модель будем, соответственно, на обучающей подвыборке из данных, а проверять качество модели - на тестовой."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Разделение выборки на обучающую и тестовую для проверки качества будущей модели:"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Использование логистической регрессии для задачи классификации:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "clf_LR = LogisticRegression(max_iter=1000, random_state=0).fit(X_train, y_train)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "(array([0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0],\n",
+       "       dtype=int64),\n",
+       " array([1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0],\n",
+       "       dtype=int64))"
+      ]
+     },
+     "execution_count": 14,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "clf_LR.predict(X_test)[:20], y_test.values[:20]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Признак: Pregnancies\n",
+      "Коэффициент: 0.11563725755941727\n",
+      "\n",
+      "Признак: Glucose\n",
+      "Коэффициент: 0.03342913494269277\n",
+      "\n",
+      "Признак: BloodPressure\n",
+      "Коэффициент: -0.009291121690012364\n",
+      "\n",
+      "Признак: SkinThickness\n",
+      "Коэффициент: 0.004412630653262435\n",
+      "\n",
+      "Признак: Insulin\n",
+      "Коэффициент: -0.0019000161196431374\n",
+      "\n",
+      "Признак: BMI\n",
+      "Коэффициент: 0.08330581322819586\n",
+      "\n",
+      "Признак: DiabetesPedigreeFunction\n",
+      "Коэффициент: 0.6733666912155464\n",
+      "\n",
+      "Признак: Age\n",
+      "Коэффициент: 0.0136504133555282\n",
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "for idx, coef in enumerate(clf_LR.coef_[0]):\n",
+    "    print(f\"Признак: {diabetes.columns[idx]}\\nКоэффициент: {coef}\\n\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Делаем вывод о том, что данные о сахарном диабете в анамнезе у родственников играют наиболее значительную роль в вероятности заболевания пациента."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "0.7795"
+      ]
+     },
+     "execution_count": 16,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "res = cross_val_score(clf_LR, X, y, cv=10).mean()\n",
+    "res"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Добавление нового пациента:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Преобразование матрицы симптомов к удобному для дальнейшей работы виду:\n",
+    "\n",
+    "X_list = list(X.values)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Добавление данных о новом пациенте:\n",
+    "\n",
+    "X_list.append([2, 101, 50, 15, 94, 32, 0.145, 46])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 19,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "type:  <class 'pandas.core.series.Series'> \n",
+      "shape: (8,)\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Приведение новых данных к надлежащему виду для дальнейшей обработки:\n",
+    "\n",
+    "type(X.loc[1,:]), X.loc[1,:].shape\n",
+    "\n",
+    "new_patient = pd.Series(X_list[2000])\n",
+    "print('type: ', type(pd.Series(X_list[2000])), '\\nshape:', pd.Series(X_list[2000]).shape)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Новые данные о пациенте:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Value</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>Pregnancies</th>\n",
+       "      <td>2.000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>Glucose</th>\n",
+       "      <td>101.000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>BloodPressure</th>\n",
+       "      <td>50.000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>SkinThickness</th>\n",
+       "      <td>15.000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>Insulin</th>\n",
+       "      <td>94.000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>BMI</th>\n",
+       "      <td>32.000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>DiabetesPedigreeFunction</th>\n",
+       "      <td>0.145</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>Age</th>\n",
+       "      <td>46.000</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                            Value\n",
+       "Pregnancies                 2.000\n",
+       "Glucose                   101.000\n",
+       "BloodPressure              50.000\n",
+       "SkinThickness              15.000\n",
+       "Insulin                    94.000\n",
+       "BMI                        32.000\n",
+       "DiabetesPedigreeFunction    0.145\n",
+       "Age                        46.000"
+      ]
+     },
+     "execution_count": 20,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "df = pd.DataFrame( data=new_patient.values, index=[X.columns], columns=['Value'])\n",
+    "df"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Предсказание диагноза:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "prediction:\n",
+      " [1] [0]\n",
+      "probabilities:\n",
+      " [[0.22027322 0.77972678]] [[0.84431071 0.15568929]]\n"
+     ]
+    }
+   ],
+   "source": [
+    "print('prediction:\\n', clf_LR.predict([X.loc[2,:]]), clf_LR.predict([new_patient]))\n",
+    "print('probabilities:\\n', clf_LR.predict_proba([X.loc[2,:]]), clf_LR.predict_proba([new_patient]))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Для сравнения взят еще третий пациент (нумерация начинается с 0, поэтому пациент номер 2 - третий пациент)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "prediction: \n",
+      "  third patient:  [1] \n",
+      "  new patient:  [0]\n",
+      "\n",
+      "probabilities: \n",
+      "  third patient:  [[0.22027322 0.77972678]] \n",
+      "  new patient:  [[0.84431071 0.15568929]]\n"
+     ]
+    }
+   ],
+   "source": [
+    "print('prediction:', '\\n  third patient: ', clf_LR.predict([X.loc[2,:]]), \n",
+    "      '\\n  new patient: ', clf_LR.predict([new_patient]))\n",
+    "print('\\nprobabilities:', '\\n  third patient: ', clf_LR.predict_proba([X.loc[2,:]]), \n",
+    "      '\\n  new patient: ', clf_LR.predict_proba([new_patient]))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 23,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "Pipeline(steps=[('standardscaler', StandardScaler()),\n",
+       "                ('sgdclassifier', SGDClassifier(tol=0))])"
+      ]
+     },
+     "execution_count": 23,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "from sklearn.linear_model import SGDClassifier\n",
+    "from sklearn.preprocessing import StandardScaler\n",
+    "from sklearn.pipeline import make_pipeline\n",
+    "\n",
+    "clf_SGD = make_pipeline(StandardScaler(),\n",
+    "                   SGDClassifier(max_iter=1000, tol=0))\n",
+    "clf_SGD.fit(X, y)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 24,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "prediction: \n",
+      "  third patient:  [1] \n",
+      "  new patient:  [0]\n",
+      "\n",
+      "Качество: 0.7414999999999999\n"
+     ]
+    }
+   ],
+   "source": [
+    "print('prediction:', '\\n  third patient: ', clf_SGD.predict([X.loc[2,:]]), \n",
+    "      '\\n  new patient: ', clf_SGD.predict([new_patient]))\n",
+    "res = cross_val_score(clf_SGD, X, y, cv=10).mean()\n",
+    "print('\\nКачество:',res)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 40,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "RandomForestClassifier(max_depth=10, random_state=0)"
+      ]
+     },
+     "execution_count": 40,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "from sklearn.ensemble import RandomForestClassifier\n",
+    "from sklearn.datasets import make_classification\n",
+    "\n",
+    "clf_RF = RandomForestClassifier(max_depth=10, random_state=0)\n",
+    "clf_RF.fit(X_train, y_train)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 41,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "prediction: \n",
+      "  third patient:  [1] \n",
+      "  new patient:  [0]\n",
+      "\n",
+      "probabilities: \n",
+      "  third patient:  [[0.09490852 0.90509148]] \n",
+      "  new patient:  [[0.75553445 0.24446555]]\n",
+      "\n",
+      "Качество: 0.85\n"
+     ]
+    }
+   ],
+   "source": [
+    "print('prediction:', '\\n  third patient: ', clf_RF.predict([X.loc[2,:]]), \n",
+    "      '\\n  new patient: ', clf_RF.predict([new_patient]))\n",
+    "print('\\nprobabilities:', '\\n  third patient: ', clf_RF.predict_proba([X.loc[2,:]]), \n",
+    "      '\\n  new patient: ', clf_RF.predict_proba([new_patient]))\n",
+    "res = cross_val_score(clf_RF, X_test, y_test, cv=10).mean()\n",
+    "print('\\nКачество:',res)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.5"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
